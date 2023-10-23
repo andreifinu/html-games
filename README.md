@@ -1,10 +1,10 @@
 # html-games
 Current games:
--snake
+*snake
 
 
 
 
 Next games to the list :
--2048
--Chess
+*2048
+*Chess
