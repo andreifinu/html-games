@@ -1,10 +1,9 @@
 # html-games
-Current games:
-*snake
+# Current HTML games :
+- Snake
 
 
 
-
-Next games to the list :
-*2048
-*Chess
+# Next games to the list :
+-2048
+-Chess
