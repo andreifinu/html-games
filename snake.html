@@ -8,87 +8,179 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            transition: background-color 0.5s;
         }
+
+        /* Light mode styles */
+        body.light-mode {
+            background-color: #fff;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: #222;
+        }
+
+        #game-board-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        #score-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            width: 100%;
+            padding: 10px;
+            background-color: #444; /* Dark mode score background color */
+        }
+
+        #score {
+            color: #fff; /* Dark mode text color */
+        }
+
         #game-board {
             position: relative;
-            height: 400px;
-            width: 400px;
+            height: 500px;
+            width: 500px;
             border: 1px solid black;
+            background-color: #fff; /* Light mode game board background color */
+            overflow: hidden; /* Add overflow: hidden to prevent elements from going outside the game board */
         }
+
         .dot {
             position: absolute;
-            height: 20px;
-            width: 20px;
+            height: 25px;
+            width: 25px;
             background-color: #000;
         }
         .apple {
             position: absolute;
-            height: 20px;
-            width: 20px;
+            height: 25px;
+            width: 25px;
             background-color: #f00;
             border-radius: 50%;
         }
+        .head {
+            position: absolute;
+            height: 25px;
+            width: 25px;
+            background-color: #000;
+            border-radius: 50% 50% 0 0;
+            transform-origin: center; /* Set the rotation origin to the center of the element */
+        }
+
+        /* Dark mode styles */
+        body.dark-mode #game-board {
+            background-color: #444;
+        }
+        body.dark-mode .dot {
+            background-color: #fff;
+        }
+        body.dark-mode .apple {
+            background-color: #ff5733;
+        }
+        body.dark-mode .head {
+            background-color: #fff;
+        }
     </style>
 </head>
-<body>
-    <div id="game-board"></div>
-    <p id="score">Score: 0</p>
+<body class="light-mode">
+    <div id="game-board-container">
+        <div id="score-container">
+            <p id="score">Score: 0</p>
+            <button id="toggle-dark-mode">Toggle Dark Mode</button>
+        </div>
+        <div id="game-board"></div>
+    </div>
     <script>
-        var dotSize = 20;
-        var gameBoardSize = 400;
+        var dotSize = 25;
+        var gameBoardSize = 500;
         var direction = 'right';
+        var lastDirection = 'right';
         var snake = [{ top: 0, left: 0 }];
         var apple = null;
         var score = 0;
+        var isDarkMode = false;
+        var canChangeDirection = true;
+        var rotation = 0; // Initial rotation angle
 
         function updateGameBoard() {
             var gameBoard = document.getElementById('game-board');
 
-            // clear previous state
+            // Clear previous state
             while (gameBoard.firstChild) {
                 gameBoard.firstChild.remove();
             }
 
-            // draw snake
-            snake.forEach(function(dot) {
+            // Draw snake
+            snake.forEach(function(dot, index) {
                 var dotElement = document.createElement('div');
-                dotElement.className = 'dot';
+                if (index === 0) {
+                    dotElement.className = 'head';
+                } else {
+                    dotElement.className = 'dot';
+                }
                 dotElement.style.top = `${dot.top}px`;
                 dotElement.style.left = `${dot.left}px`;
+                dotElement.style.transform = `rotate(${rotation}deg)`; // Apply the rotation
                 gameBoard.appendChild(dotElement);
             });
 
-            // draw apple
+            // Draw apple
             if (apple == null) {
-                apple = { top: Math.floor(Math.random() * gameBoardSize / dotSize) * dotSize, left: Math.floor(Math.random() * gameBoardSize / dotSize) * dotSize };
+                do {
+                    apple = {
+                        top: Math.floor(Math.random() * (gameBoardSize - dotSize) / dotSize) * dotSize,
+                        left: Math.floor(Math.random() * (gameBoardSize - dotSize) / dotSize) * dotSize
+                    };
+                } while (snake.some(segment => Math.abs(segment.top - apple.top) < dotSize && Math.abs(segment.left - apple.left) < dotSize));
             }
-            
+
             var appleElement = document.createElement('div');
             appleElement.className = 'apple';
             appleElement.style.top = `${apple.top}px`;
             appleElement.style.left = `${apple.left}px`;
             gameBoard.appendChild(appleElement);
 
-            // check for collisions
-            if (snake.find(function(dot, index){
-                return index != 0 && dot.top == snake[0].top && dot.left == snake[0].left;
-            })) {
+            // Check for collisions
+            if (
+                snake[0].top < 0 ||
+                snake[0].left < 0 ||
+                snake[0].top + dotSize > gameBoardSize ||
+                snake[0].left + dotSize > gameBoardSize ||
+                snake.slice(1).some(dot => dot.top === snake[0].top && dot.left === snake[0].left)
+            ) {
+                // Wrap around screen
+                if (snake[0].top < 0) snake[0].top = gameBoardSize - dotSize;
+                if (snake[0].left < 0) snake[0].left = gameBoardSize - dotSize;
+                if (snake[0].top + dotSize > gameBoardSize) snake[0].top = 0;
+                if (snake[0].left + dotSize > gameBoardSize) snake[0].left = 0;
+            }
+
+            // Check for self-collisions
+            if (snake.slice(1).some(dot => Math.abs(dot.top - snake[0].top) < dotSize && Math.abs(dot.left - snake[0].left) < dotSize)) {
+                // Game over - reset
                 snake = [{ top: 0, left: 0 }];
                 direction = 'right';
                 apple = null;
                 score = 0;
                 document.getElementById('score').innerText = "Score: " + score;
-                return;
             }
 
-            // check for apple collision
-            if (snake[0].top == apple.top && snake[0].left == apple.left) {
+            // Check for apple collision with tolerance
+            if (
+                Math.abs(snake[0].top - apple.top) < dotSize &&
+                Math.abs(snake[0].left - apple.left) < dotSize
+            ) {
                 apple = null;
                 score++;
                 document.getElementById('score').innerText = "Score: " + score;
 
                 var lastDot = Object.assign({}, snake[snake.length - 1]);
-                switch(direction) {
+                switch (direction) {
                     case 'left':
                         lastDot.left -= dotSize;
                         break;
@@ -100,59 +192,78 @@
                         break;
                     case 'down':
                         lastDot.top += dotSize;
-                        break;  
+                        break;
                 }
                 snake.push(lastDot);
             }
         }
 
         function updateSnake() {
-          var head = Object.assign({}, snake[0]); // copy head
-          switch(direction) {
-              case 'left':
-                  head.left -= dotSize;
-                  break;
-              case 'up':
-                  head.top -= dotSize;
-                  break;
-              case 'right':
-                  head.left += dotSize;
-                  break;
-              case 'down':
-                  head.top += dotSize;
-                  break;  
-          }
+            var head = Object.assign({}, snake[0]); // copy head
+            switch(direction) {
+                case 'left':
+                    head.left -= dotSize;
+                    rotation = -90; // Update rotation for left movement
+                    break;
+                case 'up':
+                    head.top -= dotSize;
+                    rotation = 0; // Update rotation for up movement
+                    break;
+                case 'right':
+                    head.left += dotSize;
+                    rotation = 90; // Update rotation for right movement
+                    break;
+                case 'down':
+                    head.top += dotSize;
+                    rotation = 180; // Update rotation for down movement
+                    break;
+            }
 
-          // wrap around screen boundaries
-          if (head.top < 0) head.top = gameBoardSize - dotSize; 
-          else if (head.left < 0) head.left = gameBoardSize - dotSize; 
-          else if (head.top === gameBoardSize) head.top = 0; 
-          else if (head.left === gameBoardSize) head.left = 0;
+            // Wrap around screen
+            if (head.top < 0) head.top = gameBoardSize - dotSize;
+            if (head.left < 0) head.left = gameBoardSize - dotSize;
+            if (head.top + dotSize > gameBoardSize) head.top = 0;
+            if (head.left + dotSize > gameBoardSize) head.left = 0;
 
-          snake.unshift(head); // add new head to snake
-          snake.pop(); // remove tail
-      }
+            snake.unshift(head); // add new head to snake
+            snake.pop(); // remove tail
+        }
 
-      function handleKey(e) {
-          e = e || window.event;
+        function handleKey(e) {
+            e = e || window.event;
 
-          if (e.keyCode == '38' && direction != 'down') {
-              direction = 'up';
-          } else if (e.keyCode == '40' && direction != 'up') {
-              direction = 'down';
-          } else if (e.keyCode == '37' && direction != 'right') {
-             direction = 'left';
-          } else if (e.keyCode == '39' && direction != 'left') {
-             direction = 'right';
-          }
-      }
+            if (canChangeDirection) {
+                if (e.keyCode == '38' && lastDirection != 'down') {
+                    direction = 'up';
+                } else if (e.keyCode == '40' && lastDirection != 'up') {
+                    direction = 'down';
+                } else if (e.keyCode == '37' && lastDirection != 'right') {
+                    direction = 'left';
+                } else if (e.keyCode == '39' && lastDirection != 'left') {
+                    direction = 'right';
+                }
 
-      document.onkeydown = handleKey;
+                lastDirection = direction;
 
-      setInterval(function() {
-          updateSnake();
-          updateGameBoard();
-      }, 200);
+                canChangeDirection = false;
+                setTimeout(function() {
+                    canChangeDirection = true;
+                }, 100); // Reduce to 100 milliseconds
+            }
+        }
+
+        document.onkeydown = handleKey;
+
+        // Toggle dark mode
+        document.getElementById('toggle-dark-mode').addEventListener('click', function() {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-mode', isDarkMode);
+        });
+
+        setInterval(function() {
+            updateSnake();
+            updateGameBoard();
+        }, 200);
     </script>
 </body>
 </html>
