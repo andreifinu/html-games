@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tic-Tac-Toe</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            transition: background 0.3s; /* Add a smooth transition to the background color */
+        }
+
+        .title {
+            font-size: 2em;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 150px);
+            gap: 10px;
+            margin: 20px auto;
+        }
+
+        .square {
+            width: 150px;
+            height: 150px;
+            font-size: 3em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #C0C0C0;
+            cursor: pointer;
+            transition: background 0.3s; /* Add a smooth transition to square background color */
+        }
+
+        .square:hover {
+            background-color: #e0e0e0;
+        }
+
+        .reset-button {
+            font-size: 1.2em;
+            margin-top: 20px;
+        }
+
+        /* Light Mode Styles */
+        .light-mode {
+            background-color: #f5f5f5; /* Changed to a shade of gray */
+            transition: background 0.3s; /* Add a smooth transition to the background color */
+        }
+
+        /* Dark Mode Styles */
+        .dark-mode {
+            background-color: #333;
+            color: black; /* Change the text color to white */
+            transition: background 0.3s; /* Add a smooth transition to the background color */
+        }
+
+        .toggle-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">Tic-Tac-Toe</div>
+    <button class="toggle-button" onclick="toggleMode()">Toggle Mode</button>
+    <div class="board" id="board">
+        <!-- Create the Tic-Tac-Toe board using JavaScript -->
+    </div>
+    <p id="result"></p>
+    <button class="reset-button" onclick="resetBoard()">Reset</button>
+
+    <script>
+        const board = document.getElementById("board");
+        const squares = [];
+        let currentPlayer = "X";
+        let gameOver = false;
+        const availableSquares = [];
+
+        function createBoard() {
+            for (let i = 0; i < 9; i++) {
+                const square = document.createElement("div");
+                square.classList.add("square");
+                square.dataset.index = i;
+                square.addEventListener("click", () => handleMove(square));
+                squares.push(square);
+                board.appendChild(square);
+                availableSquares.push(i);
+            }
+        }
+
+        function handleMove(square) {
+            if (!gameOver && !square.textContent) {
+                square.textContent = currentPlayer;
+                const index = parseInt(square.dataset.index);
+                const squareIndex = availableSquares.indexOf(index);
+                if (squareIndex !== -1) {
+                    availableSquares.splice(squareIndex, 1);
+                }
+                if (checkWinner(currentPlayer)) {
+                    document.getElementById("result").textContent = `${currentPlayer} wins!`;
+                    gameOver = true;
+                } else if (isBoardFull()) {
+                    document.getElementById("result").textContent = "It's a draw!";
+                    gameOver = true;
+                } else {
+                    currentPlayer = currentPlayer === "X" ? "O" : "X";
+                    if (!gameOver && currentPlayer === "O") {
+                        setTimeout(aiMove, 1000);
+                    }
+                }
+            }
+        }
+
+        function checkWinner(player) {
+            const winPatterns = [
+                [0, 1, 2],
+                [3, 4, 5],
+                [6, 7, 8],
+                [0, 3, 6],
+                [1, 4, 7],
+                [2, 5, 8],
+                [0, 4, 8],
+                [2, 4, 6],
+            ];
+
+            return winPatterns.some(pattern => {
+                const [a, b, c] = pattern;
+                return squares[a].textContent === player && squares[b].textContent === player && squares[c].textContent === player;
+            });
+        }
+
+        function isBoardFull() {
+            return availableSquares.length === 0;
+        }
+
+        function resetBoard() {
+            squares.forEach(square => square.textContent = "");
+            document.getElementById("result").textContent = "";
+            currentPlayer = "X";
+            gameOver = false;
+            availableSquares.length = 0;
+            for (let i = 0; i < 9; i++) {
+                availableSquares.push(i);
+            }
+        }
+
+        function aiMove() {
+            if (availableSquares.length > 0) {
+                // Improved AI: Check for a winning move
+                const winningMove = findWinningMove();
+                if (winningMove !== null) {
+                    const square = squares[winningMove];
+                    setTimeout(() => handleMove(square), 1000);
+                } else {
+                    // If no winning move, block opponent's winning move
+                    const blockingMove = findBlockingMove();
+                    if (blockingMove !== null) {
+                        const square = squares[blockingMove];
+                        setTimeout(() => handleMove(square), 1000);
+                    } else {
+                        // If no winning or blocking move, make a random move
+                        const randomIndex = Math.floor(Math.random() * availableSquares.length);
+                        const randomSquare = availableSquares[randomIndex];
+                        const square = squares[randomSquare];
+                        setTimeout(() => handleMove(square), 1000);
+                    }
+                }
+            }
+        }
+
+        function findWinningMove() {
+            for (let i = 0; i < squares.length; i++) {
+                if (squares[i].textContent === "") {
+                    squares[i].textContent = currentPlayer;
+                    if (checkWinner(currentPlayer)) {
+                        squares[i].textContent = ""; // Reset the square
+                        return i;
+                    }
+                    squares[i].textContent = ""; // Reset the square
+                }
+            }
+            return null;
+        }
+
+        function findBlockingMove() {
+            const opponent = currentPlayer === "X" ? "O" : "X";
+            for (let i = 0; i < squares.length; i++) {
+                if (squares[i].textContent === "") {
+                    squares[i].textContent = opponent;
+                    if (checkWinner(opponent)) {
+                        squares[i].textContent = ""; // Reset the square
+                        return i;
+                    }
+                    squares[i].textContent = ""; // Reset the square
+                }
+            }
+            return null;
+        }
+
+        let isDarkMode = false;
+        function toggleMode() {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle("dark-mode", isDarkMode);
+        }
+
+        createBoard();
+    </script>
+</body>
+</html>
