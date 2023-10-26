@@ -1,6 +1,7 @@
 # html-games
 # Current HTML games :
 - Snake
+- Tic-Tac-Toe
 
 
 
